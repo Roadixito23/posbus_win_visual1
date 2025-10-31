@@ -43,3 +43,15 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Windows related
+windows/flutter/ephemeral/
+
+# Exports y logs
+exports/
+logs/
+*.xlsx
+*.pdf
+
+# Config sensible (mantener app_config.json como template)
+# assets/config/app_config.json

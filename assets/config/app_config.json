@@ -1,0 +1,21 @@
+{
+  "databaseConnection": {
+    "host": "api.danteaguerorodriguez.work",
+    "port": 5432,
+    "database": "posbus_suray",
+    "username": "posbus_user",
+    "password": "",
+    "sslMode": "prefer",
+    "timeout": 30
+  },
+  "appSettings": {
+    "autoRefreshInterval": 300,
+    "theme": "light",
+    "cacheSize": 100,
+    "dateFormat": "dd/MM/yyyy",
+    "currencyFormat": "CLP"
+  },
+  "export": {
+    "defaultExportPath": "exports/"
+  }
+}
