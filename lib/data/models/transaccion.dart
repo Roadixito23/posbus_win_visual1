@@ -6,7 +6,7 @@ class Transaccion {
   final double valor;
   final String comprobante;
   final int cierreId;
-  final String dispositivoOrigen;
+  final String? dispositivoOrigen;  // Opcional para compatibilidad con API
   final DateTime? sincronizadoEn;
 
   Transaccion({
@@ -17,11 +17,11 @@ class Transaccion {
     required this.valor,
     required this.comprobante,
     required this.cierreId,
-    required this.dispositivoOrigen,
+    this.dispositivoOrigen,  // Ahora opcional
     this.sincronizadoEn,
   });
 
-  /// Constructor desde JSON (PostgreSQL)
+  /// Constructor desde JSON (API REST o PostgreSQL)
   factory Transaccion.fromJson(Map<String, dynamic> json) {
     return Transaccion(
       id: json['id'] as int,
@@ -31,7 +31,7 @@ class Transaccion {
       valor: _parseDouble(json['valor']),
       comprobante: json['comprobante'] as String,
       cierreId: json['cierre_id'] as int,
-      dispositivoOrigen: json['dispositivo_origen'] as String,
+      dispositivoOrigen: json['dispositivo_origen'] as String?,  // Opcional
       sincronizadoEn: json['sincronizado_en'] != null
           ? DateTime.parse(json['sincronizado_en'].toString())
           : null,

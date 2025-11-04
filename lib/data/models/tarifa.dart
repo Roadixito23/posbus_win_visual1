@@ -1,28 +1,32 @@
 class Tarifa {
   final int id;
   final String nombre;
-  final double precio;
-  final int orden;
+  final double precio;  // Mantener como "precio" internamente
+  final int? orden;  // Opcional para compatibilidad con API
   final bool activo;
+  final bool? esDomingo;  // Nuevo campo para compatibilidad con API
   final DateTime? actualizadoEn;
 
   Tarifa({
     required this.id,
     required this.nombre,
     required this.precio,
-    required this.orden,
+    this.orden,  // Ahora opcional
     required this.activo,
+    this.esDomingo,  // Nuevo campo opcional
     this.actualizadoEn,
   });
 
-  /// Constructor desde JSON (PostgreSQL)
+  /// Constructor desde JSON (API REST o PostgreSQL)
   factory Tarifa.fromJson(Map<String, dynamic> json) {
     return Tarifa(
       id: json['id'] as int,
       nombre: json['nombre'] as String,
-      precio: _parseDouble(json['precio']),
-      orden: json['orden'] as int,
+      // La API usa 'valor', PostgreSQL puede usar 'precio'
+      precio: _parseDouble(json['valor'] ?? json['precio']),
+      orden: json['orden'] as int?,  // Opcional
       activo: _parseBool(json['activo']),
+      esDomingo: json['es_domingo'] != null ? _parseBool(json['es_domingo']) : null,
       actualizadoEn: json['actualizado_en'] != null
           ? DateTime.parse(json['actualizado_en'].toString())
           : null,
@@ -34,10 +38,12 @@ class Tarifa {
     return {
       'id': id,
       'nombre': nombre,
-      'precio': precio,
-      'orden': orden,
-      'activo': activo ? 1 : 0,
-      'actualizado_en': actualizadoEn?.toIso8601String(),
+      'valor': precio,  // La API espera 'valor'
+      'precio': precio,  // Mantener por compatibilidad
+      if (orden != null) 'orden': orden,
+      'activo': activo,
+      if (esDomingo != null) 'es_domingo': esDomingo,
+      if (actualizadoEn != null) 'actualizado_en': actualizadoEn?.toIso8601String(),
     };
   }
 
@@ -48,6 +54,7 @@ class Tarifa {
     double? precio,
     int? orden,
     bool? activo,
+    bool? esDomingo,
     DateTime? actualizadoEn,
   }) {
     return Tarifa(
@@ -56,6 +63,7 @@ class Tarifa {
       precio: precio ?? this.precio,
       orden: orden ?? this.orden,
       activo: activo ?? this.activo,
+      esDomingo: esDomingo ?? this.esDomingo,
       actualizadoEn: actualizadoEn ?? this.actualizadoEn,
     );
   }
@@ -78,7 +86,7 @@ class Tarifa {
 
   @override
   String toString() {
-    return 'Tarifa(id: $id, nombre: $nombre, precio: $precio, orden: $orden, activo: $activo)';
+    return 'Tarifa(id: $id, nombre: $nombre, precio: $precio, orden: $orden, activo: $activo, esDomingo: $esDomingo)';
   }
 
   @override

@@ -1,119 +1,122 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'dart:convert';
-import '../data/models/configuracion.dart';
+import '../services/api_service.dart';
 import '../core/constants/app_constants.dart';
 import '../core/utils/logger.dart';
 
 class ConfiguracionProvider extends ChangeNotifier {
-  Configuracion _configuracion = Configuracion();
-  final _storage = const FlutterSecureStorage();
+  final _apiService = ApiService();
   final _logger = AppLogger();
 
-  Configuracion get configuracion => _configuracion;
+  // Configuraciones de la aplicación
+  bool _temaOscuro = false;
+  bool _autoRefresh = true;
+  int _refreshInterval = 300; // segundos
+  bool _isConnected = false;
+
+  // Getters
+  bool get temaOscuro => _temaOscuro;
+  bool get autoRefresh => _autoRefresh;
+  int get refreshInterval => _refreshInterval;
+  bool get isConnected => _isConnected;
 
   /// Carga la configuración almacenada
   Future<void> cargarConfiguracion() async {
     try {
       final prefs = await SharedPreferences.getInstance();
 
-      // Cargar configuración básica
-      final dbHost = prefs.getString(AppConstants.keyDatabaseHost) ?? 'api.danteaguerorodriguez.work';
-      final dbPort = prefs.getInt(AppConstants.keyDatabasePort) ?? 5432;
-      final dbName = prefs.getString(AppConstants.keyDatabaseName) ?? 'posbus_suray';
-      final dbUsername = prefs.getString(AppConstants.keyDatabaseUsername) ?? 'posbus_user';
-
-      // Cargar contraseña de almacenamiento seguro
-      final dbPassword = await _storage.read(key: AppConstants.keyDatabasePassword) ?? '';
-
-      final autoRefresh = prefs.getBool(AppConstants.keyAutoRefresh) ?? true;
-      final refreshInterval = prefs.getInt(AppConstants.keyRefreshInterval) ?? 300;
-      final temaOscuro = prefs.getBool(AppConstants.keyThemeMode) ?? false;
-
-      _configuracion = Configuracion(
-        dbHost: dbHost,
-        dbPort: dbPort,
-        dbName: dbName,
-        dbUsername: dbUsername,
-        dbPassword: dbPassword,
-        autoRefresh: autoRefresh,
-        refreshInterval: refreshInterval,
-        temaOscuro: temaOscuro,
-      );
+      _autoRefresh = prefs.getBool(AppConstants.keyAutoRefresh) ?? true;
+      _refreshInterval = prefs.getInt(AppConstants.keyRefreshInterval) ?? 300;
+      _temaOscuro = prefs.getBool(AppConstants.keyThemeMode) ?? false;
 
       notifyListeners();
       _logger.info('Configuración cargada correctamente');
+
+      // Verificar conexión con la API al cargar
+      await verificarConexionAPI();
     } catch (e, stackTrace) {
       _logger.error('Error al cargar configuración', e, stackTrace);
     }
   }
 
-  /// Guarda la configuración
-  Future<void> guardarConfiguracion(Configuracion nuevaConfig) async {
+  /// Verifica la conexión con la API REST
+  Future<bool> verificarConexionAPI() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
+      _logger.info('Verificando conexión con API REST');
+      _isConnected = await _apiService.verificarConexion();
 
-      // Guardar configuración básica
-      await prefs.setString(AppConstants.keyDatabaseHost, nuevaConfig.dbHost);
-      await prefs.setInt(AppConstants.keyDatabasePort, nuevaConfig.dbPort);
-      await prefs.setString(AppConstants.keyDatabaseName, nuevaConfig.dbName);
-      await prefs.setString(AppConstants.keyDatabaseUsername, nuevaConfig.dbUsername);
-
-      // Guardar contraseña en almacenamiento seguro
-      await _storage.write(
-        key: AppConstants.keyDatabasePassword,
-        value: nuevaConfig.dbPassword,
-      );
-
-      await prefs.setBool(AppConstants.keyAutoRefresh, nuevaConfig.autoRefresh);
-      await prefs.setInt(AppConstants.keyRefreshInterval, nuevaConfig.refreshInterval);
-      await prefs.setBool(AppConstants.keyThemeMode, nuevaConfig.temaOscuro);
-
-      _configuracion = nuevaConfig;
       notifyListeners();
 
-      _logger.info('Configuración guardada correctamente');
+      if (_isConnected) {
+        _logger.info('Conexión con API establecida correctamente');
+      } else {
+        _logger.warning('No se pudo conectar con la API');
+      }
+
+      return _isConnected;
     } catch (e, stackTrace) {
-      _logger.error('Error al guardar configuración', e, stackTrace);
-      rethrow;
+      _logger.error('Error al verificar conexión con API', e, stackTrace);
+      _isConnected = false;
+      notifyListeners();
+      return false;
     }
   }
 
-  /// Actualiza solo la configuración de base de datos
-  Future<void> actualizarConfiguracionDB({
-    required String host,
-    required int port,
-    required String database,
-    required String username,
-    required String password,
-  }) async {
-    final nuevaConfig = _configuracion.copyWith(
-      dbHost: host,
-      dbPort: port,
-      dbName: database,
-      dbUsername: username,
-      dbPassword: password,
-    );
-
-    await guardarConfiguracion(nuevaConfig);
+  /// Obtiene información de la API
+  Future<Map<String, dynamic>?> obtenerInfoAPI() async {
+    try {
+      return await _apiService.obtenerInfoAPI();
+    } catch (e, stackTrace) {
+      _logger.error('Error al obtener información de API', e, stackTrace);
+      return null;
+    }
   }
 
   /// Actualiza el tema
   Future<void> actualizarTema(bool oscuro) async {
-    final nuevaConfig = _configuracion.copyWith(temaOscuro: oscuro);
-    await guardarConfiguracion(nuevaConfig);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(AppConstants.keyThemeMode, oscuro);
+
+      _temaOscuro = oscuro;
+      notifyListeners();
+
+      _logger.info('Tema actualizado: ${oscuro ? 'oscuro' : 'claro'}');
+    } catch (e, stackTrace) {
+      _logger.error('Error al actualizar tema', e, stackTrace);
+      rethrow;
+    }
   }
 
   /// Actualiza el intervalo de actualización
   Future<void> actualizarIntervaloRefresh(int segundos) async {
-    final nuevaConfig = _configuracion.copyWith(refreshInterval: segundos);
-    await guardarConfiguracion(nuevaConfig);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt(AppConstants.keyRefreshInterval, segundos);
+
+      _refreshInterval = segundos;
+      notifyListeners();
+
+      _logger.info('Intervalo de actualización cambiado a $segundos segundos');
+    } catch (e, stackTrace) {
+      _logger.error('Error al actualizar intervalo', e, stackTrace);
+      rethrow;
+    }
   }
 
   /// Actualiza auto-refresh
   Future<void> actualizarAutoRefresh(bool habilitado) async {
-    final nuevaConfig = _configuracion.copyWith(autoRefresh: habilitado);
-    await guardarConfiguracion(nuevaConfig);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(AppConstants.keyAutoRefresh, habilitado);
+
+      _autoRefresh = habilitado;
+      notifyListeners();
+
+      _logger.info('Auto-refresh ${habilitado ? 'habilitado' : 'deshabilitado'}');
+    } catch (e, stackTrace) {
+      _logger.error('Error al actualizar auto-refresh', e, stackTrace);
+      rethrow;
+    }
   }
 }

@@ -14,8 +14,8 @@ dependencies:
   riverpod: ^2.4.9
   flutter_riverpod: ^2.4.9
 
-  # Database
-  postgres: ^3.0.0
+  # Database (local cache only)
+  # postgres: ^3.0.0  # Ya no se necesita - ahora usamos API REST
   sqflite_common_ffi: ^2.3.0  # Para cache local
 
   # UI Components
