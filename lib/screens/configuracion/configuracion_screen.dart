@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/configuracion_provider.dart';
 import '../../providers/theme_provider.dart';
-import '../../services/database_service.dart';
-import '../../core/utils/validators.dart';
+import '../../services/api_service.dart';
 
 class ConfiguracionScreen extends StatefulWidget {
   const ConfiguracionScreen({super.key});
@@ -13,39 +12,7 @@ class ConfiguracionScreen extends StatefulWidget {
 }
 
 class _ConfiguracionScreenState extends State<ConfiguracionScreen> {
-  final _formKey = GlobalKey<FormState>();
-  final _hostController = TextEditingController();
-  final _portController = TextEditingController();
-  final _databaseController = TextEditingController();
-  final _usernameController = TextEditingController();
-  final _passwordController = TextEditingController();
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _cargarConfiguracion();
-    });
-  }
-
-  void _cargarConfiguracion() {
-    final config = Provider.of<ConfiguracionProvider>(context, listen: false).configuracion;
-    _hostController.text = config.dbHost;
-    _portController.text = config.dbPort.toString();
-    _databaseController.text = config.dbName;
-    _usernameController.text = config.dbUsername;
-    _passwordController.text = config.dbPassword;
-  }
-
-  @override
-  void dispose() {
-    _hostController.dispose();
-    _portController.dispose();
-    _databaseController.dispose();
-    _usernameController.dispose();
-    _passwordController.dispose();
-    super.dispose();
-  }
+  bool _isChecking = false;
 
   @override
   Widget build(BuildContext context) {
@@ -58,82 +25,70 @@ class _ConfiguracionScreenState extends State<ConfiguracionScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Configuración de Base de Datos
+            // Conexión a la API REST
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(16),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Conexión a Base de Datos',
-                        style: Theme.of(context).textTheme.titleLarge,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Conexión con el Servidor',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const Divider(),
+                    const SizedBox(height: 8),
+                    ListTile(
+                      leading: const Icon(Icons.cloud, size: 32),
+                      title: const Text('URL del Servidor API'),
+                      subtitle: Text(
+                        ApiService.baseUrl,
+                        style: const TextStyle(fontFamily: 'monospace'),
                       ),
-                      const Divider(),
-                      TextFormField(
-                        controller: _hostController,
-                        decoration: const InputDecoration(
-                          labelText: 'Host',
-                          hintText: 'api.danteaguerorodriguez.work',
-                        ),
-                        validator: Validators.host,
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _portController,
-                        decoration: const InputDecoration(
-                          labelText: 'Puerto',
-                          hintText: '5432',
-                        ),
-                        keyboardType: TextInputType.number,
-                        validator: Validators.puerto,
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _databaseController,
-                        decoration: const InputDecoration(
-                          labelText: 'Base de Datos',
-                          hintText: 'posbus_suray',
-                        ),
-                        validator: (v) => Validators.requerido(v, mensaje: 'La base de datos es requerida'),
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _usernameController,
-                        decoration: const InputDecoration(
-                          labelText: 'Usuario',
-                          hintText: 'posbus_user',
-                        ),
-                        validator: (v) => Validators.requerido(v, mensaje: 'El usuario es requerido'),
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _passwordController,
-                        decoration: const InputDecoration(
-                          labelText: 'Contraseña',
-                        ),
-                        obscureText: true,
-                      ),
-                      const SizedBox(height: 24),
-                      Row(
-                        children: [
-                          ElevatedButton.icon(
-                            onPressed: _probarConexion,
-                            icon: const Icon(Icons.check_circle),
-                            label: const Text('Probar Conexión'),
+                    ),
+                    const SizedBox(height: 16),
+                    Consumer<ConfiguracionProvider>(
+                      builder: (context, configProvider, child) {
+                        return ListTile(
+                          leading: Icon(
+                            configProvider.isConnected
+                              ? Icons.check_circle
+                              : Icons.error_outline,
+                            color: configProvider.isConnected
+                              ? Colors.green
+                              : Colors.red,
+                            size: 32,
                           ),
-                          const SizedBox(width: 16),
-                          ElevatedButton.icon(
-                            onPressed: _guardarConfiguracion,
-                            icon: const Icon(Icons.save),
-                            label: const Text('Guardar'),
+                          title: Text(
+                            configProvider.isConnected
+                              ? 'Conectado al servidor'
+                              : 'Sin conexión al servidor',
                           ),
-                        ],
+                          subtitle: Text(
+                            configProvider.isConnected
+                              ? 'La API está respondiendo correctamente'
+                              : 'No se pudo conectar con la API',
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    Center(
+                      child: ElevatedButton.icon(
+                        onPressed: _isChecking ? null : _verificarConexion,
+                        icon: _isChecking
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.wifi_find),
+                        label: Text(_isChecking
+                          ? 'Verificando...'
+                          : 'Verificar Conexión'),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -205,102 +160,43 @@ class _ConfiguracionScreenState extends State<ConfiguracionScreen> {
     );
   }
 
-  Future<void> _probarConexion() async {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
-
-    final messenger = ScaffoldMessenger.of(context);
+  Future<void> _verificarConexion() async {
+    setState(() {
+      _isChecking = true;
+    });
 
     try {
-      final dbService = DatabaseService();
+      final configProvider = Provider.of<ConfiguracionProvider>(context, listen: false);
+      final conectado = await configProvider.verificarConexionAPI();
 
-      // Mostrar indicador de carga
-      if (mounted) {
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (context) => const Center(
-            child: CircularProgressIndicator(),
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            conectado
+              ? 'Conexión establecida correctamente'
+              : 'No se pudo conectar con el servidor',
           ),
-        );
-      }
-
-      await dbService.conectar(
-        host: _hostController.text,
-        port: int.parse(_portController.text),
-        database: _databaseController.text,
-        username: _usernameController.text,
-        password: _passwordController.text,
+          backgroundColor: conectado ? Colors.green : Colors.red,
+          duration: const Duration(seconds: 3),
+        ),
       );
-
-      final conectado = await dbService.probarConexion();
-
-      if (mounted) {
-        Navigator.of(context).pop(); // Cerrar diálogo de carga
-      }
-
-      if (conectado) {
-        messenger.showSnackBar(
-          const SnackBar(
-            content: Text('✓ Conexión exitosa'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      } else {
-        messenger.showSnackBar(
-          const SnackBar(
-            content: Text('✗ No se pudo establecer la conexión'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
     } catch (e) {
-      if (mounted) {
-        Navigator.of(context).pop(); // Cerrar diálogo de carga
-      }
+      if (!mounted) return;
 
-      messenger.showSnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error: ${e.toString()}'),
           backgroundColor: Colors.red,
+          duration: const Duration(seconds: 3),
         ),
       );
-    }
-  }
-
-  Future<void> _guardarConfiguracion() async {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
-
-    try {
-      final provider = Provider.of<ConfiguracionProvider>(context, listen: false);
-
-      await provider.actualizarConfiguracionDB(
-        host: _hostController.text,
-        port: int.parse(_portController.text),
-        database: _databaseController.text,
-        username: _usernameController.text,
-        password: _passwordController.text,
-      );
-
+    } finally {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('✓ Configuración guardada'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al guardar: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        setState(() {
+          _isChecking = false;
+        });
       }
     }
   }

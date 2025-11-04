@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import '../data/models/cierre_caja.dart';
 import '../data/models/transaccion.dart';
-import '../services/database_service.dart';
+import '../services/api_service.dart';
 import '../core/utils/logger.dart';
 
 class CierresProvider extends ChangeNotifier {
-  final _databaseService = DatabaseService();
+  final _apiService = ApiService();
   final _logger = AppLogger();
 
   List<CierreCaja> _cierres = [];
@@ -21,18 +21,18 @@ class CierresProvider extends ChangeNotifier {
   CierreCaja? get cierreSeleccionado => _cierreSeleccionado;
   List<Transaccion> get transaccionesCierreSeleccionado => _transaccionesCierreSeleccionado;
 
-  /// Carga todos los cierres
+  /// Carga todos los cierres desde la API
   Future<void> cargarCierres() async {
     try {
       _isLoading = true;
       _error = null;
       notifyListeners();
 
-      _cierres = await _databaseService.obtenerCierres();
+      _cierres = await _apiService.obtenerCierres();
 
       _isLoading = false;
       notifyListeners();
-      _logger.info('${_cierres.length} cierres cargados');
+      _logger.info('${_cierres.length} cierres cargados desde API');
     } catch (e, stackTrace) {
       _error = 'Error al cargar cierres: ${e.toString()}';
       _isLoading = false;
@@ -41,21 +41,21 @@ class CierresProvider extends ChangeNotifier {
     }
   }
 
-  /// Carga cierres por rango de fechas
+  /// Carga cierres por rango de fechas desde la API
   Future<void> cargarCierresPorRango(DateTime inicio, DateTime fin) async {
     try {
       _isLoading = true;
       _error = null;
       notifyListeners();
 
-      _cierres = await _databaseService.obtenerCierresPorRangoFechas(
+      _cierres = await _apiService.obtenerCierresPorRangoFechas(
         fechaInicio: inicio,
         fechaFin: fin,
       );
 
       _isLoading = false;
       notifyListeners();
-      _logger.info('${_cierres.length} cierres cargados en rango de fechas');
+      _logger.info('${_cierres.length} cierres cargados en rango de fechas desde API');
     } catch (e, stackTrace) {
       _error = 'Error al cargar cierres por rango: ${e.toString()}';
       _isLoading = false;
@@ -64,18 +64,18 @@ class CierresProvider extends ChangeNotifier {
     }
   }
 
-  /// Carga cierres por dispositivo
+  /// Carga cierres por dispositivo desde la API
   Future<void> cargarCierresPorDispositivo(String dispositivo) async {
     try {
       _isLoading = true;
       _error = null;
       notifyListeners();
 
-      _cierres = await _databaseService.obtenerCierresPorDispositivo(dispositivo);
+      _cierres = await _apiService.obtenerCierresPorDispositivo(dispositivo);
 
       _isLoading = false;
       notifyListeners();
-      _logger.info('${_cierres.length} cierres cargados para dispositivo $dispositivo');
+      _logger.info('${_cierres.length} cierres cargados para dispositivo $dispositivo desde API');
     } catch (e, stackTrace) {
       _error = 'Error al cargar cierres por dispositivo: ${e.toString()}';
       _isLoading = false;
@@ -84,18 +84,18 @@ class CierresProvider extends ChangeNotifier {
     }
   }
 
-  /// Selecciona un cierre y carga sus transacciones
+  /// Selecciona un cierre y carga sus transacciones desde la API
   Future<void> seleccionarCierre(CierreCaja cierre) async {
     try {
       _cierreSeleccionado = cierre;
       _isLoading = true;
       notifyListeners();
 
-      _transaccionesCierreSeleccionado = await _databaseService.obtenerTransaccionesPorCierre(cierre.id);
+      _transaccionesCierreSeleccionado = await _apiService.obtenerTransaccionesPorCierre(cierre.id);
 
       _isLoading = false;
       notifyListeners();
-      _logger.info('${_transaccionesCierreSeleccionado.length} transacciones cargadas para cierre ${cierre.id}');
+      _logger.info('${_transaccionesCierreSeleccionado.length} transacciones cargadas para cierre ${cierre.id} desde API');
     } catch (e, stackTrace) {
       _error = 'Error al cargar transacciones: ${e.toString()}';
       _isLoading = false;
